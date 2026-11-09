@@ -139,7 +139,9 @@ impl Action {
     }
 
     pub fn keys(combo: &str) -> Action {
-        Action::Keys { combo: combo.to_owned() }
+        Action::Keys {
+            combo: combo.to_owned(),
+        }
     }
 
     /// Reject anything that could not be executed safely or meaningfully.
@@ -258,9 +260,13 @@ pub fn parse_combo(combo: &str) -> Result<Vec<u16>, String> {
             "prevtrack" => 0xB1,
             "plus" => 0xBB,
             "minus" => 0xBD,
-            s if s.len() == 1 && s.as_bytes()[0].is_ascii_lowercase() => s.as_bytes()[0].to_ascii_uppercase() as u16,
+            s if s.len() == 1 && s.as_bytes()[0].is_ascii_lowercase() => {
+                s.as_bytes()[0].to_ascii_uppercase() as u16
+            }
             s if s.len() == 1 && s.as_bytes()[0].is_ascii_digit() => s.as_bytes()[0] as u16,
-            s if s.starts_with('f') && s[1..].parse::<u16>().is_ok_and(|n| (1..=24).contains(&n)) => {
+            s if s.starts_with('f')
+                && s[1..].parse::<u16>().is_ok_and(|n| (1..=24).contains(&n)) =>
+            {
                 0x70 + s[1..].parse::<u16>().unwrap() - 1
             }
             other => return Err(format!("unknown key \"{other}\"")),
@@ -285,8 +291,14 @@ mod tests {
     fn parses_combos() {
         assert_eq!(parse_combo("ctrl+c").unwrap(), vec![VK_CONTROL, 0x43]);
         assert_eq!(parse_combo("Alt+Left").unwrap(), vec![VK_MENU, 0x25]);
-        assert_eq!(parse_combo("ctrl+shift+F5").unwrap(), vec![VK_CONTROL, VK_SHIFT, 0x74]);
-        assert_eq!(parse_combo("win+shift+s").unwrap(), vec![VK_LWIN, VK_SHIFT, 0x53]);
+        assert_eq!(
+            parse_combo("ctrl+shift+F5").unwrap(),
+            vec![VK_CONTROL, VK_SHIFT, 0x74]
+        );
+        assert_eq!(
+            parse_combo("win+shift+s").unwrap(),
+            vec![VK_LWIN, VK_SHIFT, 0x53]
+        );
         assert_eq!(parse_combo("ctrl+1").unwrap(), vec![VK_CONTROL, 0x31]);
     }
 
@@ -302,7 +314,12 @@ mod tests {
     #[test]
     fn action_json_shape() {
         let a: Action = serde_json::from_str(r#"{"type":"window","op":"snap_left"}"#).unwrap();
-        assert_eq!(a, Action::Window { op: WindowOp::SnapLeft });
+        assert_eq!(
+            a,
+            Action::Window {
+                op: WindowOp::SnapLeft
+            }
+        );
         let b: Action = serde_json::from_str(r#"{"type":"search_selected"}"#).unwrap();
         assert!(matches!(b, Action::SearchSelected { .. }));
         assert!(serde_json::from_str::<Action>(r#"{"type":"format_disk"}"#).is_err());
@@ -312,10 +329,28 @@ mod tests {
     fn validation() {
         assert!(Action::keys("ctrl+c").validate().is_ok());
         assert!(Action::keys("ctrl+nope").validate().is_err());
-        assert!(Action::Launch { target: " ".into(), args: String::new() }.validate().is_err());
-        assert!(Action::Launch { target: "notepad.exe".into(), args: String::new() }.validate().is_ok());
-        assert!(Action::SearchSelected { url: "http://x/?q={q}".into() }.validate().is_err());
-        assert!(Action::SearchSelected { url: "https://x/?q={q}".into() }.validate().is_ok());
+        assert!(Action::Launch {
+            target: " ".into(),
+            args: String::new()
+        }
+        .validate()
+        .is_err());
+        assert!(Action::Launch {
+            target: "notepad.exe".into(),
+            args: String::new()
+        }
+        .validate()
+        .is_ok());
+        assert!(Action::SearchSelected {
+            url: "http://x/?q={q}".into()
+        }
+        .validate()
+        .is_err());
+        assert!(Action::SearchSelected {
+            url: "https://x/?q={q}".into()
+        }
+        .validate()
+        .is_ok());
         assert!(Action::Delay { ms: 20_000 }.validate().is_err());
     }
 }

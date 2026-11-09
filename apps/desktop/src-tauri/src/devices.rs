@@ -89,7 +89,9 @@ pub fn classify_connection(path: &str) -> Option<&'static str> {
 fn hid_strings(path: &str) -> (Option<String>, Option<String>) {
     use std::ffi::c_void;
     use windows::core::PCWSTR;
-    use windows::Win32::Devices::HumanInterfaceDevice::{HidD_GetManufacturerString, HidD_GetProductString};
+    use windows::Win32::Devices::HumanInterfaceDevice::{
+        HidD_GetManufacturerString, HidD_GetProductString,
+    };
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::Storage::FileSystem::{
         CreateFileW, FILE_FLAGS_AND_ATTRIBUTES, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
@@ -109,7 +111,11 @@ fn hid_strings(path: &str) -> (Option<String>, Option<String>) {
         ) else {
             return (None, None);
         };
-        let read = |f: unsafe fn(windows::Win32::Foundation::HANDLE, *mut c_void, u32) -> windows::Win32::Foundation::BOOLEAN| {
+        let read = |f: unsafe fn(
+            windows::Win32::Foundation::HANDLE,
+            *mut c_void,
+            u32,
+        ) -> windows::Win32::Foundation::BOOLEAN| {
             let mut buf = [0u16; 127];
             if f(h, buf.as_mut_ptr() as *mut c_void, (buf.len() * 2) as u32).as_bool() {
                 let end = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
@@ -128,8 +134,8 @@ fn hid_strings(path: &str) -> (Option<String>, Option<String>) {
 
 #[cfg(windows)]
 pub fn detect() -> DeviceReport {
-    use std::mem::size_of;
     use std::ffi::c_void;
+    use std::mem::size_of;
     use windows::Win32::UI::Input::{
         GetRawInputDeviceInfoW, GetRawInputDeviceList, RAWINPUTDEVICELIST, RIDI_DEVICEINFO,
         RIDI_DEVICENAME, RID_DEVICE_INFO, RIM_TYPEMOUSE,
@@ -226,7 +232,11 @@ pub fn detect() -> DeviceReport {
     if devices.is_empty() && note.is_none() {
         note = Some("No pointing devices were reported by Windows.".to_owned());
     }
-    DeviceReport { devices, system, note }
+    DeviceReport {
+        devices,
+        system,
+        note,
+    }
 }
 
 #[cfg(not(windows))]
@@ -244,7 +254,8 @@ mod tests {
 
     #[test]
     fn usb_ids() {
-        let p = r"\\?\HID#VID_046D&PID_C077#7&2a1b3c4d&0&0000#{378de44c-56ef-11d1-bc8c-00a0c91405dd}";
+        let p =
+            r"\\?\HID#VID_046D&PID_C077#7&2a1b3c4d&0&0000#{378de44c-56ef-11d1-bc8c-00a0c91405dd}";
         assert_eq!(parse_ids(p), (Some("046D".into()), Some("C077".into())));
         assert_eq!(classify_connection(p), Some("USB or wireless receiver"));
     }

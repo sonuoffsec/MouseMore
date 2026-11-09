@@ -1,3 +1,7 @@
+//! Win32 implementations behind `platform`: input injection, window and system actions,
+//! monitors, clipboard search, pointer-speed overrides, single-instance lock.
+//! Our own injected input is tagged with `MM_TAG` so the hook can ignore it.
+
 use std::ffi::c_void;
 use std::mem::size_of;
 use std::thread::sleep;
@@ -21,22 +25,24 @@ use windows::Win32::System::DataExchange::{
 };
 use windows::Win32::System::Memory::{GlobalLock, GlobalUnlock};
 use windows::Win32::System::Threading::{
-    CreateMutexW, OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+    CreateMutexW, OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+    PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetAsyncKeyState, GetDoubleClickTime, SendInput, SetDoubleClickTime, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT,
-    KEYBD_EVENT_FLAGS, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, MOUSEEVENTF_HWHEEL,
-    MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP,
-    MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_WHEEL, MOUSEEVENTF_XDOWN,
-    MOUSEEVENTF_XUP, MOUSEINPUT, MOUSE_EVENT_FLAGS, VIRTUAL_KEY,
+    GetAsyncKeyState, GetDoubleClickTime, SendInput, SetDoubleClickTime, INPUT, INPUT_0,
+    INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_EXTENDEDKEY,
+    KEYEVENTF_KEYUP, MOUSEEVENTF_HWHEEL, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
+    MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
+    MOUSEEVENTF_WHEEL, MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT, MOUSE_EVENT_FLAGS,
+    VIRTUAL_KEY,
 };
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetCursorPos, GetWindowTextLengthW, IsWindowVisible, GetForegroundWindow, GetSystemMetrics, GetWindowRect,
-    GetWindowThreadProcessId, IsZoomed, PostMessageW, SetCursorPos, ShowWindow,
-    SystemParametersInfoW, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN,
-    SM_YVIRTUALSCREEN, SPI_GETMOUSESPEED, SPI_SETMOUSESPEED, SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE,
-    SW_SHOWNORMAL, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WM_CLOSE,
+    EnumWindows, GetCursorPos, GetForegroundWindow, GetSystemMetrics, GetWindowRect,
+    GetWindowTextLengthW, GetWindowThreadProcessId, IsWindowVisible, IsZoomed, PostMessageW,
+    SetCursorPos, ShowWindow, SystemParametersInfoW, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
+    SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SPI_GETMOUSESPEED, SPI_SETMOUSESPEED, SW_MAXIMIZE,
+    SW_MINIMIZE, SW_RESTORE, SW_SHOWNORMAL, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WM_CLOSE,
 };
 
 use super::{url_encode, Foreground};
@@ -65,7 +71,13 @@ fn key_input(vk: u16, up: bool) -> INPUT {
     INPUT {
         r#type: INPUT_KEYBOARD,
         Anonymous: INPUT_0 {
-            ki: KEYBDINPUT { wVk: VIRTUAL_KEY(vk), wScan: 0, dwFlags: flags, time: 0, dwExtraInfo: MM_TAG },
+            ki: KEYBDINPUT {
+                wVk: VIRTUAL_KEY(vk),
+                wScan: 0,
+                dwFlags: flags,
+                time: 0,
+                dwExtraInfo: MM_TAG,
+            },
         },
     }
 }
@@ -96,7 +108,14 @@ fn mouse_input(flags: MOUSE_EVENT_FLAGS, data: u32) -> INPUT {
     INPUT {
         r#type: INPUT_MOUSE,
         Anonymous: INPUT_0 {
-            mi: MOUSEINPUT { dx: 0, dy: 0, mouseData: data, dwFlags: flags, time: 0, dwExtraInfo: MM_TAG },
+            mi: MOUSEINPUT {
+                dx: 0,
+                dy: 0,
+                mouseData: data,
+                dwFlags: flags,
+                time: 0,
+                dwExtraInfo: MM_TAG,
+            },
         },
     }
 }
@@ -133,7 +152,11 @@ pub fn click(b: Button, double: bool) -> Result<(), String> {
 }
 
 pub fn inject_wheel(delta: i32, horizontal: bool) -> Result<(), String> {
-    let f = if horizontal { MOUSEEVENTF_HWHEEL } else { MOUSEEVENTF_WHEEL };
+    let f = if horizontal {
+        MOUSEEVENTF_HWHEEL
+    } else {
+        MOUSEEVENTF_WHEEL
+    };
     send(&[mouse_input(f, delta as u32)])
 }
 
@@ -171,7 +194,12 @@ pub fn virtual_screen() -> Rect {
 
 // -------------------------------------------------------------- monitors ---
 
-unsafe extern "system" fn collect_monitor(_m: HMONITOR, _dc: HDC, rc: *mut RECT, data: LPARAM) -> BOOL {
+unsafe extern "system" fn collect_monitor(
+    _m: HMONITOR,
+    _dc: HDC,
+    rc: *mut RECT,
+    data: LPARAM,
+) -> BOOL {
     let list = &mut *(data.0 as *mut Vec<RECT>);
     list.push(*rc);
     BOOL(1)
@@ -180,7 +208,12 @@ unsafe extern "system" fn collect_monitor(_m: HMONITOR, _dc: HDC, rc: *mut RECT,
 fn monitors() -> Vec<RECT> {
     let mut list: Vec<RECT> = Vec::new();
     unsafe {
-        let _ = EnumDisplayMonitors(None, None, Some(collect_monitor), LPARAM(&mut list as *mut _ as isize));
+        let _ = EnumDisplayMonitors(
+            None,
+            None,
+            Some(collect_monitor),
+            LPARAM(&mut list as *mut _ as isize),
+        );
     }
     list.sort_by_key(|r| (r.left, r.top));
     list
@@ -202,7 +235,9 @@ pub fn pointer_to_monitor(which: Cycle) -> Result<(), String> {
         Cycle::Prev => (cur + n - 1) % n,
     };
     let r = mons[next];
-    unsafe { SetCursorPos((r.left + r.right) / 2, (r.top + r.bottom) / 2).map_err(|e| e.to_string()) }
+    unsafe {
+        SetCursorPos((r.left + r.right) / 2, (r.top + r.bottom) / 2).map_err(|e| e.to_string())
+    }
 }
 
 // --------------------------------------------------------------- windows ---
@@ -231,7 +266,14 @@ pub fn window_op(op: WindowOp) -> Result<(), String> {
                 let _ = ShowWindow(h, SW_MINIMIZE);
             }
             WindowOp::MaximizeToggle => {
-                let _ = ShowWindow(h, if IsZoomed(h).as_bool() { SW_RESTORE } else { SW_MAXIMIZE });
+                let _ = ShowWindow(
+                    h,
+                    if IsZoomed(h).as_bool() {
+                        SW_RESTORE
+                    } else {
+                        SW_MAXIMIZE
+                    },
+                );
             }
             WindowOp::Restore => {
                 let _ = ShowWindow(h, SW_RESTORE);
@@ -256,7 +298,11 @@ pub fn launch(target: &str, args: &str) -> Result<(), String> {
             None,
             PCWSTR(op.as_ptr()),
             PCWSTR(file.as_ptr()),
-            if args.is_empty() { PCWSTR::null() } else { PCWSTR(params.as_ptr()) },
+            if args.is_empty() {
+                PCWSTR::null()
+            } else {
+                PCWSTR(params.as_ptr())
+            },
             PCWSTR::null(),
             SW_SHOWNORMAL,
         )
@@ -264,7 +310,10 @@ pub fn launch(target: &str, args: &str) -> Result<(), String> {
     if r.0 as isize > 32 {
         Ok(())
     } else {
-        Err(format!("could not open \"{target}\" (Windows error {})", r.0 as isize))
+        Err(format!(
+            "could not open \"{target}\" (Windows error {})",
+            r.0 as isize
+        ))
     }
 }
 
@@ -343,11 +392,18 @@ pub fn exe_of(hwnd: HWND) -> Option<String> {
         let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
         let mut buf = [0u16; 520];
         let mut len = buf.len() as u32;
-        let ok = QueryFullProcessImageNameW(h, PROCESS_NAME_WIN32, windows::core::PWSTR(buf.as_mut_ptr()), &mut len);
+        let ok = QueryFullProcessImageNameW(
+            h,
+            PROCESS_NAME_WIN32,
+            windows::core::PWSTR(buf.as_mut_ptr()),
+            &mut len,
+        );
         let _ = CloseHandle(h);
         ok.ok()?;
         let path = String::from_utf16_lossy(&buf[..len as usize]);
-        path.rsplit(['\\', '/']).next().map(|s| s.to_ascii_lowercase())
+        path.rsplit(['\\', '/'])
+            .next()
+            .map(|s| s.to_ascii_lowercase())
     }
 }
 
@@ -355,9 +411,10 @@ fn own_exe() -> Option<String> {
     use std::sync::OnceLock;
     static OWN: OnceLock<Option<String>> = OnceLock::new();
     OWN.get_or_init(|| {
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase()))
+        std::env::current_exe().ok().and_then(|p| {
+            p.file_name()
+                .map(|n| n.to_string_lossy().to_ascii_lowercase())
+        })
     })
     .clone()
 }
@@ -373,16 +430,28 @@ pub fn foreground() -> Foreground {
         // covers the whole screen, so treating it as a full-screen app would hide
         // the overlay, change focus again, and flicker in an endless loop.
         if own_exe().is_some() && exe == own_exe() {
-            return Foreground { exe, fullscreen: false };
+            return Foreground {
+                exe,
+                fullscreen: false,
+            };
         }
         let mut rc = RECT::default();
         let mut fullscreen = false;
-        if GetWindowRect(h, &mut rc).is_ok() && !IsZoomed(h).as_bool() && exe.as_deref() != Some("explorer.exe") {
+        if GetWindowRect(h, &mut rc).is_ok()
+            && !IsZoomed(h).as_bool()
+            && exe.as_deref() != Some("explorer.exe")
+        {
             let mon = MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST);
-            let mut mi = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, ..Default::default() };
+            let mut mi = MONITORINFO {
+                cbSize: size_of::<MONITORINFO>() as u32,
+                ..Default::default()
+            };
             if GetMonitorInfoW(mon, &mut mi).as_bool() {
                 let m = mi.rcMonitor;
-                fullscreen = rc.left <= m.left && rc.top <= m.top && rc.right >= m.right && rc.bottom >= m.bottom;
+                fullscreen = rc.left <= m.left
+                    && rc.top <= m.top
+                    && rc.right >= m.right
+                    && rc.bottom >= m.bottom;
             }
         }
         Foreground { exe, fullscreen }

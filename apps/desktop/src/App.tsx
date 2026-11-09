@@ -1,3 +1,5 @@
+/** App shell: grouped sidebar, top bar (profile switcher, master switch) and the page map. */
+
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { GROUPS, SECTIONS, type SectionId } from "./lib/catalog";

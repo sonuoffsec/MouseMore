@@ -21,7 +21,10 @@ pub fn build(app: &AppHandle, enabled: bool) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open MouseMore", true, None::<&str>)?;
     let toggle = CheckMenuItem::with_id(app, "toggle", "Enabled", true, enabled, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit MouseMore", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &toggle, &PredefinedMenuItem::separator(app)?, &quit])?;
+    let menu = Menu::with_items(
+        app,
+        &[&open, &toggle, &PredefinedMenuItem::separator(app)?, &quit],
+    )?;
     let _ = TOGGLE.set(toggle);
 
     let mut b = TrayIconBuilder::with_id("main")
@@ -35,7 +38,12 @@ pub fn build(app: &AppHandle, enabled: bool) -> tauri::Result<()> {
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
                 show_main(tray.app_handle());
             }
         });
@@ -52,6 +60,10 @@ pub fn sync(app: &AppHandle, enabled: bool) {
         let _ = t.set_checked(enabled);
     }
     if let Some(tray) = app.tray_by_id("main") {
-        let _ = tray.set_tooltip(Some(if enabled { "MouseMore" } else { "MouseMore (disabled)" }));
+        let _ = tray.set_tooltip(Some(if enabled {
+            "MouseMore"
+        } else {
+            "MouseMore (disabled)"
+        }));
     }
 }

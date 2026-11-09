@@ -1,3 +1,6 @@
+/** Labels and helpers for the `Action` type: button names, action descriptions, defaults.
+ *  Mirrors `core/mousemore-core/src/action.rs`; the engine is the source of truth. */
+
 import type {
   Action, Button, Modifier, PluginInfo, SystemOp, ToggleKind, ToolKind, WindowOp,
 } from "./types";

@@ -1,3 +1,6 @@
+//! File-backed JSON settings store: atomic writes (temp file then rename) and recovery
+//! from a corrupt file by setting it aside instead of overwriting it.
+
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};

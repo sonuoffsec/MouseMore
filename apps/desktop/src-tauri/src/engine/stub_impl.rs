@@ -14,7 +14,9 @@ pub struct Engine {
 
 impl Engine {
     pub fn start(_s: InputSink, _e: EmergencyCallback) -> Engine {
-        Engine { error: Mutex::new(None) }
+        Engine {
+            error: Mutex::new(None),
+        }
     }
 
     pub fn set_hook(&self, on: bool) {

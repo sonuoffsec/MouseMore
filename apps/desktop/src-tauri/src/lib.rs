@@ -1,3 +1,7 @@
+//! Crate root of the desktop app: shared state (`AppState`), the Tauri commands the UI calls,
+//! and `apply_runtime()`, the one function that decides what is hooked, trapped, shown or changed.
+//! Start with docs/ARCHITECTURE.md for how the threads fit together.
+
 mod actions;
 mod autostart;
 mod capabilities;
@@ -184,13 +188,21 @@ pub fn apply_runtime(app: &AppHandle) {
     let overlay_visible = (overlay_wanted && !fullscreen_block) || tool_active;
 
     let hook = s.hook_wanted(&behavior);
-    let policy = if hook { policy_for(&behavior, s.live_monitor) } else { Policy::default() };
+    let policy = if hook {
+        policy_for(&behavior, s.live_monitor)
+    } else {
+        Policy::default()
+    };
 
     // OS pointer settings: applied only while enabled, restored otherwise.
     {
         let (speed, dbl) = if on {
             (
-                if flags.precision { Some(behavior.pointer.precision_speed) } else { behavior.pointer.speed },
+                if flags.precision {
+                    Some(behavior.pointer.precision_speed)
+                } else {
+                    behavior.pointer.speed
+                },
                 behavior.pointer.double_click_ms,
             )
         } else {
@@ -250,7 +262,10 @@ fn commit(app: &AppHandle, state: &AppState, new: Settings) -> Result<Snapshot, 
     if new.general.start_with_windows != old.general.start_with_windows {
         autostart::set(new.general.start_with_windows)?;
     }
-    state.store.save(&new).map_err(|e| format!("could not save settings: {e}"))?;
+    state
+        .store
+        .save(&new)
+        .map_err(|e| format!("could not save settings: {e}"))?;
     let enabled = new.global_enabled;
     *state.settings.lock().unwrap() = new;
     if !enabled {
@@ -292,11 +307,17 @@ pub fn on_foreground(app: &AppHandle, fg: Foreground) {
     let (before_profile, before_fs) = {
         let s = st.settings.lock().unwrap();
         let cur = st.foreground.lock().unwrap();
-        (s.effective_profile(cur.exe.as_deref()).id.clone(), cur.fullscreen)
+        (
+            s.effective_profile(cur.exe.as_deref()).id.clone(),
+            cur.fullscreen,
+        )
     };
     let (after_profile, after_fs) = {
         let s = st.settings.lock().unwrap();
-        (s.effective_profile(fg.exe.as_deref()).id.clone(), fg.fullscreen)
+        (
+            s.effective_profile(fg.exe.as_deref()).id.clone(),
+            fg.fullscreen,
+        )
     };
     *st.foreground.lock().unwrap() = fg;
     if before_profile != after_profile || before_fs != after_fs {
@@ -312,7 +333,11 @@ fn get_snapshot(state: State<'_, AppState>) -> Snapshot {
 }
 
 #[tauri::command]
-fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: serde_json::Value) -> Result<Snapshot, String> {
+fn update_settings(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    patch: serde_json::Value,
+) -> Result<Snapshot, String> {
     let current = state.settings.lock().unwrap().clone();
     let next = current.apply_patch(patch).map_err(|e| e.to_string())?;
     commit(&app, &state, next)
@@ -340,11 +365,19 @@ struct ImportPreview {
 #[tauri::command]
 fn inspect_import(json: String) -> Result<ImportPreview, String> {
     let s = Settings::from_json(&json).map_err(|e| e.to_string())?;
-    Ok(ImportPreview { profiles: s.profiles.len(), macros: s.macros.len(), launch_targets: s.launch_targets() })
+    Ok(ImportPreview {
+        profiles: s.profiles.len(),
+        macros: s.macros.len(),
+        launch_targets: s.launch_targets(),
+    })
 }
 
 #[tauri::command]
-fn import_settings(app: AppHandle, state: State<'_, AppState>, json: String) -> Result<Snapshot, String> {
+fn import_settings(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    json: String,
+) -> Result<Snapshot, String> {
     let imported = Settings::from_json(&json).map_err(|e| e.to_string())?;
     commit(&app, &state, imported)
 }
@@ -361,7 +394,11 @@ fn get_devices() -> devices::DeviceReport {
 
 #[tauri::command]
 fn get_capabilities(state: State<'_, AppState>) -> Vec<Capability> {
-    capabilities::detect(&state.engine.status(), &devices::detect(), state.overlay_ready.load(Ordering::Relaxed))
+    capabilities::detect(
+        &state.engine.status(),
+        &devices::detect(),
+        state.overlay_ready.load(Ordering::Relaxed),
+    )
 }
 
 #[derive(Serialize)]
@@ -375,20 +412,35 @@ struct PresetInfo {
 fn list_presets() -> Vec<PresetInfo> {
     presets::PRESETS
         .iter()
-        .map(|p| PresetInfo { id: p.id, name: p.name, description: p.description })
+        .map(|p| PresetInfo {
+            id: p.id,
+            name: p.name,
+            description: p.description,
+        })
         .collect()
 }
 
 #[tauri::command]
-fn apply_preset(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<Snapshot, String> {
+fn apply_preset(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<Snapshot, String> {
     let preset = presets::find(&id).ok_or("unknown preset")?;
     let mut s = state.settings.lock().unwrap().clone();
     let active = s.active_profile.clone();
-    let p = s.profiles.iter_mut().find(|p| p.id == active).ok_or("no active profile")?;
+    let p = s
+        .profiles
+        .iter_mut()
+        .find(|p| p.id == active)
+        .ok_or("no active profile")?;
     p.behavior = (preset.behavior)();
     let next = Settings::default()
         .apply_patch(json!({ "profiles": s.profiles }))
-        .map(|validated| Settings { profiles: validated.profiles, ..s })
+        .map(|validated| Settings {
+            profiles: validated.profiles,
+            ..s
+        })
         .map_err(|e| e.to_string())?;
     commit(&app, &state, next)
 }
@@ -438,7 +490,12 @@ fn running_apps() -> Vec<String> {
 
 #[tauri::command]
 fn open_config_folder(state: State<'_, AppState>) -> Result<(), String> {
-    let dir = state.store.path().parent().ok_or("no folder")?.to_path_buf();
+    let dir = state
+        .store
+        .path()
+        .parent()
+        .ok_or("no folder")?
+        .to_path_buf();
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     platform::launch(&dir.to_string_lossy(), "")
 }

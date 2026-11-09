@@ -58,7 +58,11 @@ pub struct PluginAction {
 }
 
 fn valid_id(id: &str) -> bool {
-    !id.is_empty() && id.len() <= 32 && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    !id.is_empty()
+        && id.len() <= 32
+        && id
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
 /// A relative path that stays inside the plugin folder (no drives, no `..`).
@@ -67,24 +71,36 @@ pub fn safe_relative(p: &str) -> bool {
         && p.len() <= 200
         && !p.starts_with(['/', '\\'])
         && !p.contains(':')
-        && !p.split(['/', '\\']).any(|seg| seg == ".." || seg.is_empty())
+        && !p
+            .split(['/', '\\'])
+            .any(|seg| seg == ".." || seg.is_empty())
         && !p.chars().any(|c| c.is_control())
 }
 
 fn resolve(folder: &Path, run: &str) -> Result<String, String> {
-    if run.starts_with("https://") && run.len() <= 500 && !run.chars().any(|c| c.is_control() || c == ' ') {
+    if run.starts_with("https://")
+        && run.len() <= 500
+        && !run.chars().any(|c| c.is_control() || c == ' ')
+    {
         return Ok(run.to_owned());
     }
     if !safe_relative(run) {
-        return Err(format!("\"{run}\" must be an https:// link or a path inside the plugin folder"));
+        return Err(format!(
+            "\"{run}\" must be an https:// link or a path inside the plugin folder"
+        ));
     }
     let full: PathBuf = folder.join(run);
-    let canon = full.canonicalize().map_err(|_| format!("\"{run}\" does not exist"))?;
+    let canon = full
+        .canonicalize()
+        .map_err(|_| format!("\"{run}\" does not exist"))?;
     let root = folder.canonicalize().map_err(|e| e.to_string())?;
     if !canon.starts_with(&root) || !canon.is_file() {
         return Err(format!("\"{run}\" is not a file inside the plugin folder"));
     }
-    Ok(canon.to_string_lossy().trim_start_matches(r"\\?\").to_owned())
+    Ok(canon
+        .to_string_lossy()
+        .trim_start_matches(r"\\?\")
+        .to_owned())
 }
 
 fn load_one(folder: &Path) -> Option<(PluginInfo, Vec<PluginAction>)> {
@@ -109,7 +125,9 @@ fn load_one(folder: &Path) -> Option<(PluginInfo, Vec<PluginAction>)> {
         Err(e) => return Some(fail(format!("plugin.json is invalid: {e}"))),
     };
     if !valid_id(&m.id) {
-        return Some(fail("plugin id must be lowercase letters, digits or -".into()));
+        return Some(fail(
+            "plugin id must be lowercase letters, digits or -".into(),
+        ));
     }
     let mut infos = Vec::new();
     let mut runnable = Vec::new();
@@ -119,7 +137,10 @@ fn load_one(folder: &Path) -> Option<(PluginInfo, Vec<PluginAction>)> {
         }
         match resolve(folder, &a.run) {
             Ok(target) => {
-                infos.push(ActionInfo { id: a.id.clone(), label: a.label.chars().take(40).collect() });
+                infos.push(ActionInfo {
+                    id: a.id.clone(),
+                    label: a.label.chars().take(40).collect(),
+                });
                 runnable.push(PluginAction {
                     plugin: m.id.clone(),
                     action: a.id.clone(),
@@ -145,7 +166,9 @@ fn load_one(folder: &Path) -> Option<(PluginInfo, Vec<PluginAction>)> {
 }
 
 pub fn scan(dir: &Path) -> Vec<(PluginInfo, Vec<PluginAction>)> {
-    let Ok(rd) = fs::read_dir(dir) else { return Vec::new() };
+    let Ok(rd) = fs::read_dir(dir) else {
+        return Vec::new();
+    };
     let mut out: Vec<_> = rd
         .flatten()
         .filter(|e| e.path().is_dir())

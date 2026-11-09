@@ -6,9 +6,15 @@ use mousemore_core::{Capability, Status};
 use crate::devices::DeviceReport;
 use crate::engine::EngineStatus;
 
-pub fn detect(engine: &EngineStatus, devices: &DeviceReport, overlay_ready: bool) -> Vec<Capability> {
+pub fn detect(
+    engine: &EngineStatus,
+    devices: &DeviceReport,
+    overlay_ready: bool,
+) -> Vec<Capability> {
     let running = engine.engine_running;
-    let c = |id: &str, name: &str, status: Status, detail: &str| Capability::new(id, name, status, detail);
+    let c = |id: &str, name: &str, status: Status, detail: &str| {
+        Capability::new(id, name, status, detail)
+    };
     let mut caps = Vec::new();
 
     caps.push(c(
@@ -79,7 +85,11 @@ pub fn detect(engine: &EngineStatus, devices: &DeviceReport, overlay_ready: bool
     caps.push(c(
         "app-profiles",
         "Per-application profiles",
-        if running { Status::Supported } else { Status::Unsupported },
+        if running {
+            Status::Supported
+        } else {
+            Status::Unsupported
+        },
         "Matched by executable name of the focused window.",
     ));
 
@@ -93,11 +103,17 @@ pub fn detect(engine: &EngineStatus, devices: &DeviceReport, overlay_ready: bool
     caps.push(Capability::new(
         "device-enumeration",
         "Pointing device detection",
-        if devices.devices.is_empty() { Status::Partial } else { Status::Supported },
-        devices
-            .note
-            .clone()
-            .unwrap_or_else(|| format!("{} pointing device(s) reported by the OS.", devices.devices.len())),
+        if devices.devices.is_empty() {
+            Status::Partial
+        } else {
+            Status::Supported
+        },
+        devices.note.clone().unwrap_or_else(|| {
+            format!(
+                "{} pointing device(s) reported by the OS.",
+                devices.devices.len()
+            )
+        }),
     ));
 
     caps.push(c(
@@ -173,7 +189,11 @@ mod tests {
         for id in ["hardware-dpi", "battery", "device-profiles"] {
             assert_eq!(find(&caps, id).status, Status::Unsupported, "{id}");
         }
-        assert_ne!(find(&caps, "report-rate").status, Status::Supported, "rate is an estimate");
+        assert_ne!(
+            find(&caps, "report-rate").status,
+            Status::Supported,
+            "rate is an estimate"
+        );
     }
 
     #[test]

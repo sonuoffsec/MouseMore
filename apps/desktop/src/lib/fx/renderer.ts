@@ -1,3 +1,6 @@
+/** Canvas renderer for cursor effects. Shared by the overlay window and the in-app preview,
+ *  so what you tune is exactly what is drawn. Requests frames only while something moves. */
+
 import type { Accessibility, Effects, Presentation } from "../types";
 
 export interface FxConfig {

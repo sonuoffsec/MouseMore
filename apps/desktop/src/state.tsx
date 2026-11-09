@@ -1,3 +1,7 @@
+/** App-wide state: the engine snapshot, optimistic debounced edits (`patchSettings`,
+ *  `patchBehavior`), immediate toggles (`patch`) and toasts. Failed saves roll back to
+ *  what the engine holds. */
+
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";

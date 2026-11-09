@@ -9,7 +9,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use mousemore_core::action::{Action, Button, ToolKind};
-use mousemore_core::gesture::{radial_sector, zone_at, RateEstimator, Rect, ShakeDetector, StrokeRecognizer, Zone};
+use mousemore_core::gesture::{
+    radial_sector, zone_at, RateEstimator, Rect, ShakeDetector, StrokeRecognizer, Zone,
+};
 use mousemore_core::settings::{Behavior, Macro, Modifier};
 use serde_json::json;
 use tauri::{AppHandle, Emitter};
@@ -114,7 +116,8 @@ pub fn spawn(app: AppHandle, initial: Arc<RuntimeConfig>) -> Sender<Msg> {
             };
             loop {
                 let msg = match d.next_deadline() {
-                    Some(at) => match rx.recv_timeout(at.saturating_duration_since(Instant::now())) {
+                    Some(at) => match rx.recv_timeout(at.saturating_duration_since(Instant::now()))
+                    {
                         Ok(m) => Some(m),
                         Err(RecvTimeoutError::Timeout) => None,
                         Err(RecvTimeoutError::Disconnected) => break,
@@ -159,7 +162,8 @@ impl Dispatcher {
     }
 
     fn config(&mut self, c: Arc<RuntimeConfig>) {
-        self.shake.set_sensitivity(c.behavior.gestures.shake_sensitivity);
+        self.shake
+            .set_sensitivity(c.behavior.gestures.shake_sensitivity);
         if c.live_monitor && !self.cfg.live_monitor {
             self.moves = 0;
             self.click_count = 0;
@@ -182,8 +186,20 @@ impl Dispatcher {
     fn input(&mut self, i: Input) {
         match i {
             Input::Move { x, y, t_us } => self.on_move(x, y, t_us),
-            Input::Button { button, down, x, y, swallowed } => self.on_button(button, down, x, y, swallowed),
-            Input::Wheel { delta, horizontal, x, y, swallowed } => self.on_wheel(delta, horizontal, x, y, swallowed),
+            Input::Button {
+                button,
+                down,
+                x,
+                y,
+                swallowed,
+            } => self.on_button(button, down, x, y, swallowed),
+            Input::Wheel {
+                delta,
+                horizontal,
+                x,
+                y,
+                swallowed,
+            } => self.on_wheel(delta, horizontal, x, y, swallowed),
             Input::Foreground(fg) => crate::on_foreground(&self.app, fg),
             Input::Hotkey(h) => crate::tools::run(
                 &self.app,
@@ -230,7 +246,9 @@ impl Dispatcher {
         if b.edges.enabled {
             self.track_zone(x, y, now);
         }
-        if self.cfg.overlay_visible && now.duration_since(self.last_fx).as_millis() >= FX_INTERVAL_MS {
+        if self.cfg.overlay_visible
+            && now.duration_since(self.last_fx).as_millis() >= FX_INTERVAL_MS
+        {
             self.last_fx = now;
             self.fx(json!({"k": "move", "x": x, "y": y}));
         }
@@ -241,7 +259,13 @@ impl Dispatcher {
         let z = zone_at(x, y, self.vs, EDGE_CORNER_PX);
         match (z, &mut self.zone) {
             (Some(z), Some(cur)) if cur.zone == z => {}
-            (Some(z), _) => self.zone = Some(ZoneState { zone: z, since: now, fired: false }),
+            (Some(z), _) => {
+                self.zone = Some(ZoneState {
+                    zone: z,
+                    since: now,
+                    fired: false,
+                })
+            }
             (None, _) => self.zone = None,
         }
     }
@@ -263,7 +287,14 @@ impl Dispatcher {
     // ----------------------------------------------------------- buttons ---
 
     fn remap_max(&self, b: Button) -> u8 {
-        self.cfg.behavior.remaps.iter().filter(|r| r.button == b).map(|r| r.clicks).max().unwrap_or(0)
+        self.cfg
+            .behavior
+            .remaps
+            .iter()
+            .filter(|r| r.button == b)
+            .map(|r| r.clicks)
+            .max()
+            .unwrap_or(0)
     }
 
     fn on_button(&mut self, b: Button, down: bool, x: i32, y: i32, swallowed: bool) {
@@ -271,7 +302,9 @@ impl Dispatcher {
         if down {
             self.click_count += 1;
             if self.cfg.overlay_visible {
-                self.fx(json!({"k": "click", "x": x, "y": y, "b": format!("{b:?}").to_lowercase()}));
+                self.fx(
+                    json!({"k": "click", "x": x, "y": y, "b": format!("{b:?}").to_lowercase()}),
+                );
             }
             self.emit_monitor(&format!("{b:?}").to_lowercase(), now, true);
         }
@@ -293,8 +326,13 @@ impl Dispatcher {
             }
         } else if is_radial {
             if down {
-                let labels: Vec<String> = beh.radial.items.iter().map(|i| i.label.clone()).collect();
-                self.radial = Some(RadialSession { cx: x, cy: y, hover: None });
+                let labels: Vec<String> =
+                    beh.radial.items.iter().map(|i| i.label.clone()).collect();
+                self.radial = Some(RadialSession {
+                    cx: x,
+                    cy: y,
+                    hover: None,
+                });
                 self.fx(json!({"k": "radial", "s": "open", "x": x, "y": y, "items": labels}));
             } else if let Some(r) = self.radial.take() {
                 self.fx(json!({"k": "radial", "s": "close"}));
@@ -326,7 +364,9 @@ impl Dispatcher {
         }
         if self.record {
             self.record = false;
-            let _ = self.app.emit_to("main", "gesture-recorded", json!({"pattern": pattern}));
+            let _ = self
+                .app
+                .emit_to("main", "gesture-recorded", json!({"pattern": pattern}));
             self.fx(json!({"k": "gesture", "s": "end", "pattern": pattern, "matched": true, "label": "Recorded"}));
             return;
         }
@@ -383,7 +423,10 @@ impl Dispatcher {
             d = -d;
         }
         let mut horiz = horizontal;
-        if !horizontal && s.horizontal_modifier != Modifier::None && platform::modifier_down(s.horizontal_modifier) {
+        if !horizontal
+            && s.horizontal_modifier != Modifier::None
+            && platform::modifier_down(s.horizontal_modifier)
+        {
             horiz = true;
             d = -d; // wheel down scrolls right, like every other horizontal scroller
         }
@@ -400,9 +443,11 @@ impl Dispatcher {
 
     fn next_deadline(&self) -> Option<Instant> {
         let clicks = self.clicks.values().filter_map(|c| c.deadline).min();
-        let edge = self.zone.as_ref().filter(|z| !z.fired && self.cfg.behavior.edges.enabled).map(|z| {
-            z.since + Duration::from_millis(self.cfg.behavior.edges.dwell_ms as u64)
-        });
+        let edge = self
+            .zone
+            .as_ref()
+            .filter(|z| !z.fired && self.cfg.behavior.edges.enabled)
+            .map(|z| z.since + Duration::from_millis(self.cfg.behavior.edges.dwell_ms as u64));
         [clicks, edge].into_iter().flatten().min()
     }
 

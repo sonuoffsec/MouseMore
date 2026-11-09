@@ -25,7 +25,11 @@ pub fn stop_all_macros() {
 pub fn run_top(app: &AppHandle, cfg: &RuntimeConfig, action: &Action) {
     if let Err(e) = run(app, cfg, action, 0) {
         eprintln!("MouseMore action failed: {e}");
-        let _ = app.emit_to("main", "action-error", format!("{}: {e}", action.describe()));
+        let _ = app.emit_to(
+            "main",
+            "action-error",
+            format!("{}: {e}", action.describe()),
+        );
     }
 }
 
@@ -57,14 +61,20 @@ pub fn run(app: &AppHandle, cfg: &RuntimeConfig, action: &Action, depth: u8) -> 
                 .plugins
                 .iter()
                 .find(|p| &p.plugin == plugin && &p.action == action)
-                .ok_or_else(|| format!("plugin action {plugin}/{action} is not installed or not enabled"))?;
+                .ok_or_else(|| {
+                    format!("plugin action {plugin}/{action} is not installed or not enabled")
+                })?;
             platform::launch(&p.target, &p.args)
         }
         Action::Macro { id } => {
             if depth >= MAX_MACRO_DEPTH {
                 return Err("macros are nested too deeply".into());
             }
-            let m = cfg.macros.iter().find(|m| &m.id == id).ok_or_else(|| format!("macro \"{id}\" does not exist"))?;
+            let m = cfg
+                .macros
+                .iter()
+                .find(|m| &m.id == id)
+                .ok_or_else(|| format!("macro \"{id}\" does not exist"))?;
             let generation = MACRO_GENERATION.load(Ordering::SeqCst);
             for step in &m.steps {
                 if MACRO_GENERATION.load(Ordering::SeqCst) != generation {

@@ -4,7 +4,10 @@
 
 use std::sync::Mutex;
 
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{
+    AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder,
+};
 
 use crate::platform;
 
@@ -43,7 +46,9 @@ fn fit(w: &WebviewWindow) {
 
 /// `interactive`: the overlay captures the mouse and keyboard (annotate/ruler).
 pub fn apply(app: &AppHandle, visible: bool, interactive: bool) {
-    let Some(w) = app.get_webview_window("overlay") else { return };
+    let Some(w) = app.get_webview_window("overlay") else {
+        return;
+    };
     let mut last = APPLIED.lock().unwrap();
     if *last == (visible, interactive) {
         return;

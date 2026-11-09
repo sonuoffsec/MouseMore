@@ -57,11 +57,27 @@ pub struct Policy {
 
 #[derive(Debug, Clone)]
 pub enum Input {
-    Move { x: i32, y: i32, t_us: u64 },
+    Move {
+        x: i32,
+        y: i32,
+        t_us: u64,
+    },
     /// `swallowed`: the hook already withheld this event from the system, so
     /// the dispatcher must replay it if nothing claims it.
-    Button { button: Button, down: bool, x: i32, y: i32, swallowed: bool },
-    Wheel { delta: i32, horizontal: bool, x: i32, y: i32, swallowed: bool },
+    Button {
+        button: Button,
+        down: bool,
+        x: i32,
+        y: i32,
+        swallowed: bool,
+    },
+    Wheel {
+        delta: i32,
+        horizontal: bool,
+        x: i32,
+        y: i32,
+        swallowed: bool,
+    },
     Foreground(Foreground),
     Hotkey(Hotkey),
 }

@@ -12,8 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with: { components: clippy }
+        with: { components: clippy, rustfmt }
       - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
       - run: cargo test -p mousemore-core
       - run: cargo clippy -p mousemore-core --all-targets -- -D warnings
 

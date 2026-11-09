@@ -49,8 +49,16 @@ fn productivity() -> Behavior {
     b.edges.enabled = true;
     b.radial.enabled = true;
     b.remaps = vec![
-        Remap { button: Button::X1, clicks: 1, action: Action::keys("alt+left") },
-        Remap { button: Button::X2, clicks: 1, action: Action::keys("alt+right") },
+        Remap {
+            button: Button::X1,
+            clicks: 1,
+            action: Action::keys("alt+left"),
+        },
+        Remap {
+            button: Button::X2,
+            clicks: 1,
+            action: Action::keys("alt+right"),
+        },
     ];
     b.scroll.horizontal_modifier = Modifier::Shift;
     b
@@ -60,8 +68,20 @@ fn gaming() -> Behavior {
     // Everything quiet: no overlay, no gestures, no scroll rewriting.
     Behavior {
         remaps: vec![
-            Remap { button: Button::X1, clicks: 1, action: Action::System { op: SystemOp::VolumeDown } },
-            Remap { button: Button::X2, clicks: 1, action: Action::System { op: SystemOp::VolumeUp } },
+            Remap {
+                button: Button::X1,
+                clicks: 1,
+                action: Action::System {
+                    op: SystemOp::VolumeDown,
+                },
+            },
+            Remap {
+                button: Button::X2,
+                clicks: 1,
+                action: Action::System {
+                    op: SystemOp::VolumeUp,
+                },
+            },
         ],
         ..Behavior::default()
     }

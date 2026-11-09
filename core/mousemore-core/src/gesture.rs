@@ -92,7 +92,11 @@ impl ShakeDetector {
             return false;
         }
         self.reversals.push_back(t_ms);
-        while self.reversals.front().is_some_and(|&t| t_ms.saturating_sub(t) > SHAKE_WINDOW_MS) {
+        while self
+            .reversals
+            .front()
+            .is_some_and(|&t| t_ms.saturating_sub(t) > SHAKE_WINDOW_MS)
+        {
             self.reversals.pop_front();
         }
         if self.reversals.len() >= self.required && t_ms >= self.cooldown_until {
@@ -137,7 +141,11 @@ impl StrokeRecognizer {
             return;
         }
         let dir = if dx.abs() > dy.abs() {
-            if dx > 0.0 { 'R' } else { 'L' }
+            if dx > 0.0 {
+                'R'
+            } else {
+                'L'
+            }
         } else if dy > 0.0 {
             'D'
         } else {
@@ -162,7 +170,9 @@ impl StrokeRecognizer {
             let filtered: Vec<(char, u32)> = runs
                 .iter()
                 .enumerate()
-                .filter(|(i, (_, n))| *n >= 2 || *i == 0 || (*i == runs.len() - 1 && runs.len() <= 2))
+                .filter(|(i, (_, n))| {
+                    *n >= 2 || *i == 0 || (*i == runs.len() - 1 && runs.len() <= 2)
+                })
                 .map(|(_, r)| *r)
                 .collect();
             if !filtered.is_empty() {
@@ -181,7 +191,9 @@ impl StrokeRecognizer {
 }
 
 pub fn valid_pattern(p: &str) -> bool {
-    !p.is_empty() && p.len() <= MAX_PATTERN_LEN && p.chars().all(|c| matches!(c, 'U' | 'D' | 'L' | 'R'))
+    !p.is_empty()
+        && p.len() <= MAX_PATTERN_LEN
+        && p.chars().all(|c| matches!(c, 'U' | 'D' | 'L' | 'R'))
 }
 
 // --------------------------------------------------------------- radial ----
@@ -306,7 +318,12 @@ mod tests {
 
     fn line(from: (i32, i32), to: (i32, i32), steps: i32) -> Vec<(i32, i32)> {
         (0..=steps)
-            .map(|i| (from.0 + (to.0 - from.0) * i / steps, from.1 + (to.1 - from.1) * i / steps))
+            .map(|i| {
+                (
+                    from.0 + (to.0 - from.0) * i / steps,
+                    from.1 + (to.1 - from.1) * i / steps,
+                )
+            })
             .collect()
     }
 
@@ -414,7 +431,12 @@ mod tests {
 
     #[test]
     fn zones() {
-        let vs = Rect { x: 0, y: 0, w: 1920, h: 1080 };
+        let vs = Rect {
+            x: 0,
+            y: 0,
+            w: 1920,
+            h: 1080,
+        };
         assert_eq!(zone_at(0, 0, vs, 24), Some(Zone::TopLeft));
         assert_eq!(zone_at(1919, 0, vs, 24), Some(Zone::TopRight));
         assert_eq!(zone_at(0, 1079, vs, 24), Some(Zone::BottomLeft));
@@ -430,7 +452,12 @@ mod tests {
 
     #[test]
     fn zones_with_offset_virtual_screen() {
-        let vs = Rect { x: -1920, y: 0, w: 3840, h: 1080 };
+        let vs = Rect {
+            x: -1920,
+            y: 0,
+            w: 3840,
+            h: 1080,
+        };
         assert_eq!(zone_at(-1920, 0, vs, 24), Some(Zone::TopLeft));
         assert_eq!(zone_at(1919, 1079, vs, 24), Some(Zone::BottomRight));
         assert_eq!(zone_at(0, 500, vs, 24), None);

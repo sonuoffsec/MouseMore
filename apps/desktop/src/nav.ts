@@ -1,3 +1,5 @@
+/** Tiny navigation context so any component can switch pages without prop drilling. */
+
 import { createContext, useContext } from "react";
 import type { SectionId } from "./lib/catalog";
 

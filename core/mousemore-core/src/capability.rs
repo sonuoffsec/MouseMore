@@ -1,3 +1,6 @@
+//! Capability reporting: how well each feature works on this system, with a reason.
+//! Hardware-dependent features can never report `Supported`; see the tests.
+
 use serde::{Deserialize, Serialize};
 
 /// How well a capability works on the current system.

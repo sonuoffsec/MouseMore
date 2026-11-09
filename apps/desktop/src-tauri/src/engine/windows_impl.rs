@@ -1,3 +1,7 @@
+//! Windows engine thread: owns the low-level mouse hook, the global hotkeys and the
+//! foreground-window watcher, and forwards events to the dispatcher over a channel.
+//! The hook callback must stay tiny: classify, read the static `Policy`, send, return.
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
@@ -7,9 +11,7 @@ use std::time::{Duration, Instant};
 use mousemore_core::Button;
 use windows::Win32::Foundation::{HINSTANCE, HMODULE, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::Threading::GetCurrentThreadId;
-use windows::Win32::UI::Accessibility::{
-    SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK,
-};
+use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     RegisterHotKey, UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT,
 };
@@ -48,8 +50,13 @@ static POLICY: RwLock<Policy> = RwLock::new(Policy {
     send_moves: false,
 });
 /// Buttons whose press we swallowed, so the matching release is swallowed too.
-static SWALLOWED: [AtomicBool; Button::COUNT] =
-    [AtomicBool::new(false), AtomicBool::new(false), AtomicBool::new(false), AtomicBool::new(false), AtomicBool::new(false)];
+static SWALLOWED: [AtomicBool; Button::COUNT] = [
+    AtomicBool::new(false),
+    AtomicBool::new(false),
+    AtomicBool::new(false),
+    AtomicBool::new(false),
+    AtomicBool::new(false),
+];
 
 fn emit(i: Input) {
     if let Some(s) = SINK.get() {
@@ -79,9 +86,10 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
                 WM_LBUTTONDOWN | WM_LBUTTONUP => Some((Button::Left, msg == WM_LBUTTONDOWN)),
                 WM_RBUTTONDOWN | WM_RBUTTONUP => Some((Button::Right, msg == WM_RBUTTONDOWN)),
                 WM_MBUTTONDOWN | WM_MBUTTONUP => Some((Button::Middle, msg == WM_MBUTTONDOWN)),
-                WM_XBUTTONDOWN | WM_XBUTTONUP => {
-                    Some((if hi == 1 { Button::X1 } else { Button::X2 }, msg == WM_XBUTTONDOWN))
-                }
+                WM_XBUTTONDOWN | WM_XBUTTONUP => Some((
+                    if hi == 1 { Button::X1 } else { Button::X2 },
+                    msg == WM_XBUTTONDOWN,
+                )),
                 _ => None,
             };
             if let Some((b, down)) = button {
@@ -90,13 +98,25 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
                     if trap {
                         SWALLOWED[b.index()].store(true, Ordering::Relaxed);
                     }
-                    emit(Input::Button { button: b, down, x, y, swallowed: trap });
+                    emit(Input::Button {
+                        button: b,
+                        down,
+                        x,
+                        y,
+                        swallowed: trap,
+                    });
                     if trap {
                         return LRESULT(1);
                     }
                 } else {
                     let was = SWALLOWED[b.index()].swap(false, Ordering::Relaxed);
-                    emit(Input::Button { button: b, down, x, y, swallowed: was });
+                    emit(Input::Button {
+                        button: b,
+                        down,
+                        x,
+                        y,
+                        swallowed: was,
+                    });
                     if was {
                         return LRESULT(1);
                     }
@@ -109,7 +129,13 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
             } else if msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL {
                 let p = policy();
                 let delta = (info.mouseData >> 16) as u16 as i16 as i32;
-                emit(Input::Wheel { delta, horizontal: msg == WM_MOUSEHWHEEL, x, y, swallowed: p.wheel_rewrite });
+                emit(Input::Wheel {
+                    delta,
+                    horizontal: msg == WM_MOUSEHWHEEL,
+                    x,
+                    y,
+                    swallowed: p.wheel_rewrite,
+                });
                 if p.wheel_rewrite {
                     return LRESULT(1);
                 }
@@ -163,7 +189,12 @@ impl Engine {
             .spawn(move || engine_thread(ready_tx, ack_tx, thread_status, on_emergency))
             .expect("spawn engine thread");
         let thread_id = ready_rx.recv().unwrap_or(0);
-        Engine { thread_id, status, ack: Mutex::new(ack_rx), handle: Mutex::new(Some(handle)) }
+        Engine {
+            thread_id,
+            status,
+            ack: Mutex::new(ack_rx),
+            handle: Mutex::new(Some(handle)),
+        }
     }
 
     pub fn set_policy(&self, p: Policy) {
@@ -178,7 +209,9 @@ impl Engine {
         }
         let ack = self.ack.lock().unwrap();
         while ack.try_recv().is_ok() {} // drop stale acks
-        let posted = unsafe { PostThreadMessageW(self.thread_id, MSG_SET_HOOK, WPARAM(on as usize), LPARAM(0)) };
+        let posted = unsafe {
+            PostThreadMessageW(self.thread_id, MSG_SET_HOOK, WPARAM(on as usize), LPARAM(0))
+        };
         if posted.is_ok() {
             let _ = ack.recv_timeout(ACK_TIMEOUT);
         }
@@ -187,7 +220,8 @@ impl Engine {
     pub fn set_foreground_watch(&self, on: bool) {
         if self.thread_id != 0 {
             unsafe {
-                let _ = PostThreadMessageW(self.thread_id, MSG_SET_FG, WPARAM(on as usize), LPARAM(0));
+                let _ =
+                    PostThreadMessageW(self.thread_id, MSG_SET_FG, WPARAM(on as usize), LPARAM(0));
             }
         }
     }
@@ -244,7 +278,12 @@ fn engine_thread(
                 MSG_SET_HOOK => {
                     let want = msg.wParam.0 != 0;
                     if want && hook.is_none() {
-                        match SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), HINSTANCE::default(), 0) {
+                        match SetWindowsHookExW(
+                            WH_MOUSE_LL,
+                            Some(mouse_proc),
+                            HINSTANCE::default(),
+                            0,
+                        ) {
                             Ok(h) => {
                                 hook = Some(h);
                                 let mut s = status.lock().unwrap();

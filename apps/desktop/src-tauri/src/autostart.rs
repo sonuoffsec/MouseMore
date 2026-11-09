@@ -19,12 +19,17 @@ pub fn set(enabled: bool) -> Result<(), String> {
     } else {
         cmd.args(["delete", KEY, "/v", VALUE, "/f"]);
     }
-    let out = cmd.output().map_err(|e| format!("could not run reg.exe: {e}"))?;
+    let out = cmd
+        .output()
+        .map_err(|e| format!("could not run reg.exe: {e}"))?;
     if out.status.success() || !enabled {
         // Deleting a value that is already gone is not an error.
         Ok(())
     } else {
-        Err(format!("could not update startup entry: {}", String::from_utf8_lossy(&out.stderr).trim()))
+        Err(format!(
+            "could not update startup entry: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ))
     }
 }
 

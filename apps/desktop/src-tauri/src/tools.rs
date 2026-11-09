@@ -18,7 +18,14 @@ pub fn run(app: &AppHandle, kind: ToolKind) {
     match kind {
         ToolKind::Annotate | ToolKind::Ruler => {
             let current = *app.state::<AppState>().tool.lock().unwrap();
-            set(app, if current == Some(kind) { None } else { Some(kind) });
+            set(
+                app,
+                if current == Some(kind) {
+                    None
+                } else {
+                    Some(kind)
+                },
+            );
         }
         ToolKind::ClearAnnotations => {
             let _ = app.emit_to("overlay", "fx", json!({"k": "clear"}));

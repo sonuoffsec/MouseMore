@@ -1,3 +1,6 @@
+/** Shared UI primitives (Card, Switch, Button, Slider, Select, Banner, Toasts, ...).
+ *  Pages should compose these instead of styling raw elements. */
+
 import {
   useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes,
 } from "react";
