@@ -1,5 +1,5 @@
 //! Placeholder for operating systems without a native backend yet.
-//! It reports honestly that nothing is running.
+//! It reports that nothing is running.
 
 use std::sync::Mutex;
 

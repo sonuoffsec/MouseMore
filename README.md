@@ -4,7 +4,7 @@
 
 MouseMore is a free, open-source desktop utility that unlocks more of an ordinary mouse: cursor effects, gestures, a radial menu, button remapping, scroll control, per-app profiles, screen tools and automation, working system-wide. It is local-first: no account, no telemetry, no network access.
 
-> **Status: 0.1 pre-release (Windows 10/11).** Every feature listed below is implemented. Automated tests cover the logic; interactive behaviour (gestures, overlay visuals, tray) still needs wider real-world testing. See [docs/TESTING.md](docs/TESTING.md) and the honest per-feature status in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+> **Status: 0.1 pre-release (Windows 10/11).** Every feature listed below is implemented. Automated tests cover the logic; interactive behaviour (gestures, overlay visuals, tray) still needs wider real-world testing. See [docs/TESTING.md](docs/TESTING.md) and the per-feature status in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 ![MouseMore overview](docs/screenshots/overview.png)
 

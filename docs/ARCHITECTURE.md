@@ -17,7 +17,7 @@
                            └──────────────────────────┬─────────────────────────────────┘
                                                       │ uses
               core/mousemore-core: settings (+validation), actions, gesture algorithms,
-                                   presets, atomic store, capability types — no OS code
+                                   presets, atomic store, capability types, no OS code
 ```
 
 ## The three threads that matter

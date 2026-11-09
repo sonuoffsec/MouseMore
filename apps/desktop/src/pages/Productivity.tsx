@@ -41,7 +41,7 @@ export function Productivity() {
     try {
       // Search needs the user to have text selected in another window; give them time to switch back.
       if (t.action.type === "search_selected") {
-        toast("Select some text in another window — searching in 4 seconds…", "info");
+        toast("Select some text in another window. Searching in 4 seconds…", "info");
         await new Promise((r) => setTimeout(r, 4000));
       }
       await api.runAction(t.action);
