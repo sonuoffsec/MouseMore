@@ -20,6 +20,8 @@ Short demos (recorded from the app window; the live preview is driven by synthet
   <img src="docs/screenshots/demo-gestures.gif" width="49%" alt="Demo: gesture bindings page and the record-by-drawing control" />
 </p>
 
+![Demo: switching between light and dark themes and navigating pages](docs/screenshots/demo-theme-navigation.gif)
+
 
 ## Why
 
