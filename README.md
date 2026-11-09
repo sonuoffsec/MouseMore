@@ -13,6 +13,14 @@ MouseMore is a free, open-source desktop utility that unlocks more of an ordinar
   <img src="docs/screenshots/gestures.png" width="49%" alt="Gestures page" />
 </p>
 
+Short demos (recorded from the app window; the live preview is driven by synthetic pointer input inside the app, so the gesture demo shows the bindings page rather than a real mouse stroke):
+
+<p>
+  <img src="docs/screenshots/demo-cursor-effects.gif" width="49%" alt="Demo: trail and glow in the cursor effects live preview" />
+  <img src="docs/screenshots/demo-gestures.gif" width="49%" alt="Demo: gesture bindings page and the record-by-drawing control" />
+</p>
+
+
 ## Why
 
 Mouse tools are usually tied to one vendor's hardware, need an account, or run heavy background processes. MouseMore works with any mouse Windows can see, keeps everything on your machine, and shows you every hook, overlay and automation it uses. Anything it cannot do, it says so instead of pretending.
