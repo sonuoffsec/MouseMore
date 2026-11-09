@@ -38,6 +38,9 @@ Legend: `[x]` implemented **and verified** · `[~]` implemented, compiles and is
 - [x] Installer and portable ZIP build (rebuilt after the UI-test fixes; smoke-tested)
 - [x] Driven UI test against the real window with real input (see docs/TESTING.md)
 - [x] README screenshots
-- [ ] Code signing, GIFs, GitHub release
-- [ ] Linux and macOS backends (core crate is already OS-independent)
+- [x] GitHub pre-release v0.1.0 published (installer, portable ZIP, SHA256)
+- [x] Release workflow on tag push, with optional signing (docs/RELEASING.md); signing untested until a certificate is added
+- [ ] Code signing certificate and secrets (owner action)
+- [ ] Demo GIFs
+- [~] Linux and macOS: the app compiles in CI with a stub engine (no hook, no overlay, no gestures); real backends not started
 - [ ] Wider hardware testing (wireless, Bluetooth, multi-monitor mixed DPI)
