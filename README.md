@@ -54,18 +54,31 @@ Mouse tools are usually tied to one vendor's hardware, need an account, or run h
 
 ## Install
 
-Releases are not published yet. Build from source:
+**Download:** go to the [latest release](https://github.com/sonuoffsec/MouseMore/releases/latest) and pick one:
 
-**Prerequisites (Windows):** [Node.js](https://nodejs.org) 20+, [Rust](https://rustup.rs) (MSVC), Visual Studio Build Tools with **Desktop development with C++**, WebView2 (preinstalled on Windows 11).
+| File | What it is |
+|---|---|
+| `MouseMore_0.1.0_x64-setup.exe` | Installer. Double-click, no admin rights needed; installs for your user only. |
+| `MouseMore-0.1.0-portable-win-x64.zip` | Portable. Extract anywhere and run `mousemore.exe`. Settings stay in a `data` folder next to it. |
+
+Requires Windows 10 or 11 (64-bit). It needs the Microsoft WebView2 runtime, which comes with Windows 11 and current Windows 10 and is set up by the installer if missing.
+
+> **Windows SmartScreen:** the 0.1.0 pre-release is not code-signed yet, so Windows may show "Windows protected your PC". Choose **More info**, then **Run anyway**. You can verify the download with the SHA256 file on the release page (`Get-FileHash <file>` in PowerShell).
+
+**First run:** features are opt-in, so nothing is active until you turn it on from its page (for example Cursor Effects). The switch at the top right pauses everything. Emergency stop from anywhere: `Ctrl+Alt+Shift+M`.
+
+### Build from source
+
+**Prerequisites (Windows):** [Node.js](https://nodejs.org) 20+, [Rust](https://rustup.rs) (MSVC), Visual Studio Build Tools with **Desktop development with C++**, WebView2.
 
 ```powershell
 npm install
 npm run dev                          # development window
-npm run build                        # NSIS installer (per-user, no admin) in target/release/bundle/nsis
+npm run build                        # NSIS installer in target/release/bundle/nsis
 ./scripts/package-portable.ps1       # portable ZIP in dist-portable/
 ```
 
-**Portable edition:** extract the ZIP and run `mousemore.exe`. The `portable.flag` file beside it keeps all data in a `data` folder next to the executable; delete the flag to use your user profile instead. Portable and installed editions have identical features.
+**Portable edition:** the `portable.flag` file beside the executable keeps all data in a `data` folder next to it; delete the flag to use your user profile instead. Portable and installed editions have identical features.
 
 ## Plugins
 
