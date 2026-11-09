@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and release (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, (optionally) sign, publish
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      # Optional signing secrets. Empty when not configured.
+      CERT_PFX_B64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+      CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+
+      - name: Check tag matches app version
+        shell: pwsh
+        run: |
+          $v = (Get-Content apps/desktop/src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          if ($env:TAG -ne "v$v") { throw "Tag '$env:TAG' does not match tauri.conf.json version 'v$v'" }
+          "VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Detect signing configuration
+        shell: pwsh
+        run: |
+          $signed = [bool]($env:CERT_PFX_B64 -and $env:CERT_PASSWORD)
+          "SIGNED=$($signed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          if ($signed) { Write-Host "Signing secrets found: build will be signed." }
+          else { Write-Host "No signing secrets: build will be UNSIGNED." }
+
+      - name: Build exe (no bundle)
+        shell: pwsh
+        run: |
+          Push-Location apps/desktop
+          npx tauri build --no-bundle
+          if ($LASTEXITCODE -ne 0) { throw "build failed" }
+          Pop-Location
+
+      - name: Prepare signing certificate
+        if: env.SIGNED == 'true'
+        shell: pwsh
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERT_PFX_B64))
+          "PFX_PATH=$pfx" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Sign mousemore.exe
+        if: env.SIGNED == 'true'
+        shell: pwsh
+        run: ./scripts/sign-file.ps1 -Path target/release/mousemore.exe
+
+      - name: Package portable ZIP
+        shell: pwsh
+        run: ./scripts/package-portable.ps1 -SkipBuild
+
+      - name: Build NSIS installer
+        shell: pwsh
+        run: |
+          Push-Location apps/desktop
+          npx tauri bundle --bundles nsis
+          if ($LASTEXITCODE -ne 0) { throw "installer bundle failed" }
+          Pop-Location
+
+      - name: Sign installer
+        if: env.SIGNED == 'true'
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          if (-not $exe) { throw "installer not found" }
+          ./scripts/sign-file.ps1 -Path $exe.FullName
+
+      - name: Remove signing certificate
+        if: always() && env.PFX_PATH != ''
+        shell: pwsh
+        run: Remove-Item -Force -ErrorAction SilentlyContinue $env:PFX_PATH
+
+      - name: Collect assets and checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          Copy-Item dist-portable/*.zip, dist-portable/*.zip.sha256 release-assets/
+          $setup = Get-ChildItem target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          if (-not $setup) { throw "installer not found" }
+          Copy-Item $setup.FullName release-assets/
+          $dest = Join-Path release-assets $setup.Name
+          $h = (Get-FileHash $dest -Algorithm SHA256).Hash.ToLower()
+          Set-Content "$dest.sha256" "$h  $($setup.Name)"
+          Get-ChildItem release-assets | Format-Table Name, Length
+
+      - name: Write release notes
+        shell: pwsh
+        run: |
+          $v = $env:VERSION
+          $section = ''
+          if (Test-Path CHANGELOG.md) {
+            $lines = Get-Content CHANGELOG.md
+            $start = -1
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+              if ($lines[$i] -match '^##\s' -and $lines[$i].Contains($v)) { $start = $i + 1; break }
+            }
+            if ($start -ge 0) {
+              $body = @()
+              for ($i = $start; $i -lt $lines.Count -and $lines[$i] -notmatch '^##\s'; $i++) { $body += $lines[$i] }
+              $section = ($body -join "`n").Trim()
+            }
+          }
+          if (-not $section) { $section = "Pre-release build of MouseMore $v. See CHANGELOG.md for details." }
+          if ($env:SIGNED -eq 'true') {
+            $status = "**Signing:** the installer and mousemore.exe are Authenticode-signed (SHA-256, timestamped). Verify with ``Get-AuthenticodeSignature``."
+          } else {
+            $status = "**Signing:** this build is **unsigned**. Windows SmartScreen will warn on first run. Verify the SHA-256 checksums below before running."
+          }
+          $sums = (Get-ChildItem release-assets/*.sha256 | ForEach-Object { (Get-Content $_).Trim() }) -join "`n"
+          $fence = '```'
+          $notes = "$status`n`n$section`n`n### SHA-256`n$fence`n$sums`n$fence`n"
+          Set-Content release-notes.md $notes -Encoding utf8
+
+      - name: Create or update pre-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = Get-ChildItem release-assets | ForEach-Object { $_.FullName }
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release edit $env:TAG --prerelease --notes-file release-notes.md
+            if ($LASTEXITCODE -ne 0) { throw "release edit failed" }
+            gh release upload $env:TAG @assets --clobber
+          } else {
+            gh release create $env:TAG @assets --prerelease --title "MouseMore $env:TAG" --notes-file release-notes.md --verify-tag
+          }
+          if ($LASTEXITCODE -ne 0) { throw "release publish failed" }
