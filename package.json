@@ -1,0 +1,13 @@
+{
+  "name": "mousemore-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "workspaces": ["apps/desktop"],
+  "scripts": {
+    "dev": "npm run tauri:dev -w apps/desktop",
+    "build": "npm run tauri:build -w apps/desktop",
+    "test": "npm test -w apps/desktop",
+    "typecheck": "npm run typecheck -w apps/desktop"
+  }
+}

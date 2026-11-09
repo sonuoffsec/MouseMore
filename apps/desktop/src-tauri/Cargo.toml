@@ -1,0 +1,38 @@
+[package]
+name = "mousemore"
+description = "MouseMore - your mouse can do more"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "mousemore_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+mousemore-core = { path = "../../../core/mousemore-core" }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Pinned: the windows crate changes signatures between minor versions.
+[target.'cfg(windows)'.dependencies.windows]
+version = "=0.58.0"
+features = [
+  "Win32_Foundation",
+  "Win32_Devices_HumanInterfaceDevice",
+  "Win32_Graphics_Gdi",
+  "Win32_Security",
+  "Win32_Storage_FileSystem",
+  "Win32_System_DataExchange",
+  "Win32_System_Memory",
+  "Win32_System_Threading",
+  "Win32_UI_Accessibility",
+  "Win32_UI_Input",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+]

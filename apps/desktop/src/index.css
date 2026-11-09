@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0b0c0f;
+  --color-sidebar: #0e0f13;
+  --color-panel: #14151a;
+  --color-raised: #1a1c22;
+  --color-line: #24262e;
+  --color-fg: #e9eaee;
+  --color-mute: #9296a3;
+  --color-accent: #8b9bff;
+  --color-accent-fg: #0b0c0f;
+  --color-ok: #3ecf8e;
+  --color-warn: #f5a524;
+  --color-bad: #f2687a;
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Mono", ui-monospace, Consolas, monospace;
+}
+
+html[data-theme="light"] {
+  --color-bg: #f6f7f9;
+  --color-sidebar: #eceef2;
+  --color-panel: #ffffff;
+  --color-raised: #f0f2f5;
+  --color-line: #dcdfe6;
+  --color-fg: #15171c;
+  --color-mute: #5d6270;
+  --color-accent: #4756e0;
+  --color-accent-fg: #ffffff;
+  --color-ok: #14915c;
+  --color-warn: #a86400;
+  --color-bad: #c42a40;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 6px; }
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 8px; border: 2px solid var(--color-bg); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ------------------------------------------------------------ controls --- */
+.mm-input { color: var(--color-fg); outline: none; transition: border-color .15s, box-shadow .15s; }
+.mm-input:hover { border-color: color-mix(in srgb, var(--color-mute) 55%, var(--color-line)); }
+.mm-input:focus-visible { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent); }
+select.mm-input { cursor: pointer; }
+select.mm-input option { background: var(--color-panel); color: var(--color-fg); }
+
+.mm-range {
+  -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(to right, var(--color-accent) var(--pct, 50%), var(--color-line) var(--pct, 50%));
+}
+.mm-range:disabled { opacity: .4; cursor: not-allowed; }
+.mm-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--color-accent); box-shadow: 0 1px 4px rgb(0 0 0 / .35);
+  transition: transform .12s;
+}
+.mm-range:hover::-webkit-slider-thumb { transform: scale(1.12); }
+.mm-range:focus-visible { outline-offset: 5px; }
+
+button:not(:disabled), [role="switch"]:not(:disabled), [role="radio"] { cursor: pointer; }
+input[type="checkbox"] { cursor: pointer; }
+
+/* App chrome is not selectable text; real fields, paths and values stay selectable. */
+body { user-select: none; -webkit-user-select: none; }
+input, textarea, select, code, kbd, dd, .font-mono, [data-selectable] { user-select: text; -webkit-user-select: text; }
+img, svg { -webkit-user-drag: none; }
